@@ -51,18 +51,37 @@
      !important beats the JS-set inline style below, which stays only as
      a fallback for browsers that don't support length-division in calc().
 
-     COVER on every screen size (phone, tablet, desktop): the stage
-     always scales up to fully fill the viewport with no letterboxing,
+     COVER below the desktop breakpoint (phone, tablet in portrait):
+     the stage scales up to fully fill the viewport with no letterboxing,
      using max() rather than min(). The Mayon artwork's own
      object-fit:cover + object-position:center center (set below) then
      decides what, if anything, is trimmed at the overflowing edge —
      the composition (arch, names, date card, "You're Invited", scroll
      cue) stays exactly where it was positioned in the approved 1086x1448
      stage, since only the stage's scale changes, never its internal
-     layout. */
+     layout.
+
+     CONTAIN from the desktop breakpoint up: the fixed stage is a tall
+     1086x1448 portrait canvas, and on a wide desktop window that same
+     cover math (max of the two ratios) scales it up far past the
+     window's height — the guest lands on an oversized, cropped canvas
+     with no way to see or reach the rest of it, since scrolling is
+     intentionally locked until story-mode begins. Switching to min()
+     here fits the whole stage inside the window instead (both
+     dimensions bounded, so nothing overflows), letterboxed on the
+     sides against #viewport's own background rather than blown up
+     past the edges — the correct trade-off on a screen much wider
+     than the invitation's own portrait aspect ratio. */
   @supports (width: calc(100px / 2)){
     #stage{
       transform:scale(max(100dvw / 1086px, 100dvh / 1448px)) !important;
+    }
+  }
+  @media (min-width:900px){
+    @supports (width: calc(100px / 2)){
+      #stage{
+        transform:scale(min(100dvw / 1086px, 100dvh / 1448px)) !important;
+      }
     }
   }
 

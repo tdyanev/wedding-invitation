@@ -7,15 +7,17 @@
   var HALF_W = STAGE_W / 2; // 543
 
   /* Fallback only — used when the browser doesn't support length-division
-     in calc() (see the @supports CSS rule above, which wins via
-     !important whenever it applies). Mirrors the same COVER behavior as
-     the CSS: max() on every screen size, so the stage always fills the
-     viewport with no letterboxed bands, on phone, tablet, or desktop. */
+     in calc() (see the @supports CSS rules above, which win via
+     !important whenever they apply). Mirrors the same cover-below /
+     contain-above-900px split as the CSS, so a wide desktop window
+     never scales the fixed 1086x1448 stage up past its own bounds. */
   function fitStage(){
     var vv = window.visualViewport;
     var vw = (vv && vv.width) ? vv.width : window.innerWidth;
     var vh = (vv && vv.height) ? vv.height : window.innerHeight;
-    var scale = Math.max(vw / STAGE_W, vh / STAGE_H);
+    var scale = (vw >= 900)
+      ? Math.min(vw / STAGE_W, vh / STAGE_H)
+      : Math.max(vw / STAGE_W, vh / STAGE_H);
     stage.style.transform = 'scale(' + scale + ')';
   }
   window.addEventListener('resize', fitStage);
