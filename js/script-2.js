@@ -22,6 +22,15 @@
     if(storyStarted) return;
     storyStarted = true;
 
+    /* From here on the browser owns scrolling — these listeners never
+       called preventDefault and already no-op once storyStarted is
+       true, but removing them outright leaves nothing that could ever
+       compete with native document scroll. */
+    window.removeEventListener('wheel', onOpenerWheel);
+    window.removeEventListener('touchstart', onOpenerTouchStart);
+    window.removeEventListener('touchmove', onOpenerTouchMove);
+    window.removeEventListener('keydown', onOpenerKeydown);
+
     spawnWashParticles();
     transitionEl.classList.add('on');
 
@@ -99,6 +108,7 @@
     setupGiftToggle();
     setupCountdown();
     setupCountdownParticles();
+    setupFarewellParticles();
     setupRsvpFlow();
     setupFarewellReveal();
     setupReturnToStory();
@@ -405,15 +415,45 @@
     setInterval(tick, 1000);
   }
 
+  var prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
   function setupCountdownParticles(){
     var wrap = document.getElementById('countdown-particles');
-    if(!wrap) return;
+    if(!wrap || prefersReducedMotion) return;
     for(var i = 0; i < 20; i++){
       var s = document.createElement('span');
       s.style.left = (Math.random() * 100) + '%';
       s.style.bottom = (Math.random() * 30) + '%';
       s.style.animationDelay = (Math.random() * 7) + 's';
       s.style.animationDuration = (5 + Math.random() * 5) + 's';
+      wrap.appendChild(s);
+    }
+  }
+
+  /* Item 8 — a sparse, slow drift of champagne-gold motes across the
+     farewell scene: fewer and slower than the countdown's particles
+     so it reads as soft floating dust rather than an effect, and it
+     never competes with the monogram or text sitting above it
+     (z-index keeps it behind .farewell-content). Disabled entirely
+     under prefers-reduced-motion, and capped low on narrow/mobile
+     viewports to stay cheap. */
+  function setupFarewellParticles(){
+    var wrap = document.getElementById('farewell-particles');
+    if(!wrap || prefersReducedMotion) return;
+    var count = window.innerWidth < 640 ? 22 : 32;
+    for(var i = 0; i < count; i++){
+      var s = document.createElement('span');
+      var roll = Math.random();
+      // Mostly small/medium motes, with an occasional glowing one for
+      // a touch of "celestial dust" sparkle rather than uniform dots.
+      var sizeClass = roll < 0.5 ? 'p-sm' : (roll < 0.85 ? 'p-md' : (roll < 0.95 ? 'p-lg' : 'p-glow'));
+      s.className = sizeClass;
+      s.style.left = (Math.random() * 100) + '%';
+      s.style.bottom = (Math.random() * 90) + '%';
+      s.style.setProperty('--drift-x', (Math.random() * 40 - 20) + 'px');
+      s.style.setProperty('--drift-y', (-90 - Math.random() * 90) + 'px');
+      s.style.animationDelay = (Math.random() * 11) + 's';
+      s.style.animationDuration = (8 + Math.random() * 8) + 's';
       wrap.appendChild(s);
     }
   }
@@ -571,6 +611,9 @@
       confirmation.classList.add('shown');
       confirmation.scrollIntoView({behavior:'smooth', block:'start'});
       spawnRsvpConfetti();
+      /* Mayon belongs to the Farewell act only — once RSVP is truly
+         sent, fade it out here in favour of the existing gradient. */
+      setTimeout(function(){ confirmation.classList.add('bg-faded'); }, 900);
     }
 
     function spawnRsvpConfetti(){

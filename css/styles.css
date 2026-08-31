@@ -1,4 +1,4 @@
-:root{
+  :root{
     --stage-w:1086;
     --stage-h:1448;
   }
@@ -11,7 +11,7 @@
     width:100%;
     height:100%;
     height:100dvh;
-    background:#0d0709;
+    background:#151b22;
     overflow:hidden;
     overscroll-behavior:none;
     touch-action:none;
@@ -28,7 +28,7 @@
     display:flex;
     align-items:center;
     justify-content:center;
-    background:#0d0709;
+    background:#151b22;
     overflow:hidden;
     touch-action:none;
   }
@@ -40,30 +40,29 @@
     flex:none;
     transform-origin:center center;
     overflow:hidden;
-    background:#150a0d;
-    box-shadow:0 30px 90px rgba(0,0,0,0.65);
+    background:#1b232c;
+    box-shadow:0 30px 90px rgba(0,0,0,0.5);
     touch-action:none;
   }
 
-  /* Primary fit method: pure CSS, recalculated by the browser on every
-     layout pass (including while the mobile toolbar is animating in/out),
-     so there's no JS timing race that can leave the wrong scale applied.
+  /* Fit method: pure CSS, recalculated by the browser on every layout
+     pass (including while the mobile toolbar is animating in/out), so
+     there's no JS timing race that can leave the wrong scale applied.
      !important beats the JS-set inline style below, which stays only as
-     a fallback for browsers that don't support length-division in calc(). */
+     a fallback for browsers that don't support length-division in calc().
+
+     COVER on every screen size (phone, tablet, desktop): the stage
+     always scales up to fully fill the viewport with no letterboxing,
+     using max() rather than min(). The Mayon artwork's own
+     object-fit:cover + object-position:center center (set below) then
+     decides what, if anything, is trimmed at the overflowing edge —
+     the composition (arch, names, date card, "You're Invited", scroll
+     cue) stays exactly where it was positioned in the approved 1086x1448
+     stage, since only the stage's scale changes, never its internal
+     layout. */
   @supports (width: calc(100px / 2)){
     #stage{
-      transform:scale(min(100dvw / 1086px, 100dvh / 1448px)) !important;
-    }
-  }
-
-  /* Mobile-only override: fill the whole phone screen (COVER) instead of
-     letterboxing (CONTAIN). Tablet/desktop keep the approved min()
-     "contain" rule above untouched — this only applies under 600px. */
-  @media (max-width: 600px){
-    @supports (width: calc(100px / 2)){
-      #stage{
-        transform:scale(max(100dvw / 1086px, 100dvh / 1448px)) !important;
-      }
+      transform:scale(max(100dvw / 1086px, 100dvh / 1448px)) !important;
     }
   }
 
@@ -563,30 +562,33 @@
      the scrolling story that follows it.
      ============================================================ */
   :root{
-    /* Foundation palette — the constant dusty-blue wedding identity */
-    --deep-navy:#263746;
-    --deeper-navy:#1F2C38;
+    /* Foundation palette — an all-blue wedding identity (deep navy
+       through dusty, slate, muted and soft blue). Champagne gold is
+       kept only as a thin accent (dividers, dots, borders) — it is
+       never used to wash a whole section anymore. Every stop below
+       is lighter than the previous pass so no area rests on
+       near-black; depth now comes from the blue range itself. */
+    --deep-navy:#2A3D4E;
+    --deeper-navy:#1F3040;
     --deep-dusty-blue:#31445A;
     --dark-slate-blue:#3F5368;
     --dusty-blue:#6F879D;
     --muted-blue:#8FA9B8;
+    --soft-blue:#A9C2D0;
     --soft-ivory:#F5F0E6;
-    --muted-ivory:#EDE7DA;
-    /* A deliberately muted, deeper stand-in for the brightest gradient
-       stops — large areas now rest here instead of near-white, so
-       text never sits on a bright blank field. Pure --soft-ivory is
-       kept only as a brief accent, never a resting background. */
-    --dusty-ivory:#DAD0BE;
+    /* Former "ivory/beige/taupe" resting tones, now reassigned to the
+       blue family so section endpoints stay light and airy without
+       ever turning whitish or brown. */
+    --dusty-ivory:#AEC2D0;
     --champagne:#D9C28F;
-    /* A subdued, deeper gold used as a transitional "haze" between
-       blue and ivory tones — richer than pure champagne, never the
-       loud dominant colour. */
-    --champagne-haze:#B7A47E;
-    --warm-taupe:#B8ADA0;
-    --beige:#D8C9B8;
-    --light-gray:#D5D6D4;
-    --dusky-champagne-blue:#535D65;
-    --blue-taupe:#69737C;
+    /* A blue-gray transitional "haze" between deeper and lighter
+       blues — replaces the old gold-brown wash entirely. */
+    --champagne-haze:#5C7286;
+    --warm-taupe:#7C93A6;
+    --beige:#93AAB9;
+    --light-gray:#C7D5DE;
+    --dusky-champagne-blue:#3C4E60;
+    --blue-taupe:#57697A;
     --ink-on-dark:#EFE7D8;
     --ink-on-light:#2E3B47;
   }
@@ -598,7 +600,40 @@
     overscroll-behavior-y:none;
     background:var(--deep-navy);
   }
-  html.story-mode #viewport{ display:none; }
+  /* The revealed opener (Mayon scene, date, "You're Invited") stays on
+     screen as the first section of the document instead of being
+     hidden — scrolling continues naturally down into Our Story rather
+     than jumping to an unrelated page. #stage keeps sizing itself off
+     dvw/dvh directly, so it renders identically to the fixed opener. */
+  html.story-mode #viewport{
+    position:relative !important;
+    inset:auto !important;
+    width:100% !important;
+    height:100dvh !important;
+    min-height:100dvh !important;
+    z-index:2;
+    overflow:visible !important;
+    touch-action:auto !important;
+  }
+  /* THE ACTUAL FIX: touch-action does not just apply to the element it's
+     set on — a touch-action:none ancestor restricts every descendant's
+     gestures too, no matter what touch-action those descendants declare.
+     #stage (and everything inside it — doors, medallion, scratch card)
+     was still touch-action:none with no story-mode override, so a
+     finger swipe anywhere on the opener was never recognized as a page
+     scroll even though html/body already allowed it. This is the one
+     rule that actually unlocks native scrolling past the opener.
+     NOTE: #stage deliberately KEEPS overflow:hidden here. #continuation
+     is a sibling of #stage in the DOM (not nested inside it), so
+     overflow:hidden never clips the continuation content — but the
+     opened doors swing on rotateY() past their hinge, and without
+     clipping their rose/pink-toned SVG panel geometry was showing as
+     vertical strips beyond both edges of the stage. Removing
+     overflow:visible fixes that "pink edges" artifact without
+     affecting scroll unlock, which touch-action alone provides. */
+  html.story-mode #stage{
+    touch-action:auto !important;
+  }
 
   /* ============================================================
      A single, cheap, entirely static texture layer — restrained
@@ -616,7 +651,7 @@
     background-image:
       radial-gradient(ellipse 90% 60% at 50% 0%, rgba(255,255,255,0.05), transparent 60%),
       radial-gradient(ellipse 80% 55% at 50% 100%, rgba(0,0,0,0.16), transparent 65%),
-      url("../assets/images/embedded-08.svg");
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
     background-repeat:no-repeat, no-repeat, repeat;
     mix-blend-mode:overlay;
   }
@@ -634,6 +669,118 @@
   }
   html.story-mode #continuation{ display:block; }
 
+  /* ============================================================
+     FLORAL TRANSITION — the couple's own floral PNG asset (provided,
+     not generated), placed as a dedicated, independent sibling
+     BETWEEN the opener (#viewport) and the story (#continuation) in
+     the DOM — not a child of either. Living as a true sibling of
+     both means its z-index competes directly against #viewport and
+     #continuation at the same (root, body-level) stacking level
+     rather than being capped inside either one's own stacking
+     context — which is what actually lets it paint above both once
+     it's supposed to be visible.
+
+     STORY-MODE GATE (kept exactly as approved): display:none while
+     the doors are closed, display:block only once html.story-mode is
+     added — a hard removal from rendering, not an opacity fade, so
+     the ornament can never appear over the closed pink doors.
+
+     SEAM POSITIONING (kept exactly as approved): this wrapper takes
+     zero layout height (height:0) and sits at the exact DOM point
+     where the opener's fixed 100dvh stage ends and #continuation
+     begins — that point IS the seam.
+
+     FULL-WIDTH REACH (kept exactly as approved): near-viewport-width
+     per breakpoint (100vw on the smallest phones, 96vw from there
+     up), so the ornament's long horizontal flourish still reaches
+     close to both edges of the seam — this pass changes none of
+     that horizontal sizing.
+
+     HEIGHT REDUCTION — the actual change here: the PNG's own aspect
+     ratio (2179:721) means its full artwork rendered at full width
+     is quite tall, which is what was reading as a large banner.
+     Rather than scaling the image itself down (which would also
+     shrink its width and undo the approved full-width coverage) or
+     stretching it, a separate CLIP layer now sits between the seam
+     wrapper and the image: .floral-transition-clip is sized to the
+     same full width but a much shorter height (roughly half the
+     image's natural height, via a vw-based clamp so it scales with
+     viewport the same way the width does) and uses overflow:hidden.
+     The <img> itself keeps its approved width/height:auto — it is
+     rendered at full, undistorted size — but is now centered
+     *inside* that shorter clip box via its own absolute
+     top:50%/left:50%/translate(-50%,-50%), so the clip box crops
+     away the top and bottom of the tall artwork while keeping the
+     full horizontal span and the vertically-centered floral cluster
+     (where the PNG's ornamentation is concentrated) fully visible.
+     The clip box itself keeps the exact same seam-centering
+     (top:0 + translate(-50%,-50%)) that the image used to carry
+     directly, so the seam point still lands on the vertical center
+     of the now-shorter visible strip, not on the full tall image.
+     overflow:visible remains on the outer .floral-transition wrapper
+     so the clip box (and only the clip box) does the cropping.
+
+     RESTRAINT (kept exactly as approved): opacity:0.68 and the
+     horizontal mask-image fade at both outer edges are unchanged —
+     same softened champagne-gold treatment, same edge dissolve. */
+  html:not(.story-mode) .floral-transition{
+    display:none;
+  }
+  html.story-mode .floral-transition{
+    display:block;
+  }
+  .floral-transition{
+    position:relative;
+    height:0;
+    width:100%;
+    z-index:50;
+    overflow:visible;
+    pointer-events:none;
+  }
+  .floral-transition-clip{
+    position:absolute;
+    left:50%;
+    top:0;
+    transform:translate(-50%, -50%);
+    width:100vw;
+    height:clamp(52px, 16vw, 200px);
+    overflow:hidden;
+    pointer-events:none;
+  }
+  @media (min-width:481px){
+    .floral-transition-clip{ width:96vw; }
+  }
+  .floral-transition-image{
+    position:absolute;
+    left:50%;
+    top:50%;
+    transform:translate(-50%, -50%);
+    width:100%;
+    max-width:none;
+    height:auto;
+    display:block;
+    pointer-events:none;
+    opacity:0.68;
+    -webkit-mask-image:linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(0,0,0,0.55) 7%,
+      black 16%,
+      black 84%,
+      rgba(0,0,0,0.55) 93%,
+      transparent 100%
+    );
+    mask-image:linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(0,0,0,0.55) 7%,
+      black 16%,
+      black 84%,
+      rgba(0,0,0,0.55) 93%,
+      transparent 100%
+    );
+  }
+
   #continuation *{ box-sizing:border-box; }
   #continuation img{ max-width:100%; display:block; }
 
@@ -646,17 +793,19 @@
      ============================================================ */
   #continuation .act{
     position:relative;
-    width:100%;
-    padding:44px 22px 46px;
+    width:100vw;
+    margin-left:calc(50% - 50vw);
+    margin-right:calc(50% - 50vw);
+    padding:36px 22px 38px;
     text-align:center;
     overflow:hidden;
   }
   #continuation .act.on-light{ color:var(--ink-on-light); }
   @media (min-width:640px){
-    #continuation .act{ padding:56px 8% 58px; }
+    #continuation .act{ padding:44px 8vw 46px; }
   }
   @media (min-width:900px){
-    #continuation .act{ padding:68px 9% 70px; }
+    #continuation .act{ padding:52px 9vw 54px; }
   }
 
   #continuation .act-title{
@@ -688,6 +837,9 @@
     margin:0 0 12px;
   }
   #continuation .act.on-light .section-label{ color:var(--dusty-blue); }
+  /* Item 4 — Principal Sponsors / Guests read as clearly bolder
+     subheadings without growing in size. */
+  #continuation .section-label.party-role-bold{ font-weight:700; }
   #continuation .body-text{
     font-family:'Libre Baskerville', serif;
     font-size:12px;
@@ -755,6 +907,7 @@
   #continuation .reveal-scale.in{ opacity:1; transform:scale(1); }
   @media (prefers-reduced-motion: reduce){
     #continuation .reveal, #continuation .reveal-scale{ transition:opacity 0.3s linear; transform:none; }
+    #continuation .countdown-particles span, #continuation .farewell-particles span{ animation:none; opacity:0; }
   }
 
   /* portrait / photo placeholders */
@@ -823,6 +976,23 @@
     padding-bottom:30px;
     overflow:hidden;
   }
+  /* Meet the Bride / Meet the Groom must reach edge-to-edge like the
+     rest of the invitation — without this, #act-ii's own horizontal
+     padding insets them and exposes its (different) background colour
+     as a vertical strip down both sides once the gradients diverge. */
+  #continuation #meet-bride, #continuation #meet-groom{
+    width:100vw;
+    margin-left:calc(50% - 50vw);
+    margin-right:calc(50% - 50vw);
+    padding-left:22px;
+    padding-right:22px;
+  }
+  @media (min-width:640px){
+    #continuation #meet-bride, #continuation #meet-groom{ padding-left:8vw; padding-right:8vw; }
+  }
+  @media (min-width:900px){
+    #continuation #meet-bride, #continuation #meet-groom{ padding-left:9vw; padding-right:9vw; }
+  }
 
   /* ============================================================
      PART 10/11/12 — Moments Between: a luxury photo album, not a
@@ -840,7 +1010,7 @@
   #continuation #moments-between{
     background:linear-gradient(180deg, var(--deeper-navy) 0%, var(--deep-dusty-blue) 100%);
     position:relative;
-    padding-top:34px;
+    padding-top:24px;
   }
   #moments-between::before{
     content:"";
@@ -981,8 +1151,8 @@
   /* ---- "Different Maps..." — auto-fit to one cinematic line (Part 13) ---- */
   #continuation #act-ii-closing{
     background:linear-gradient(180deg, var(--deep-dusty-blue) 0%, var(--dusky-champagne-blue) 100%);
-    padding-top:34px;
-    padding-bottom:34px;
+    padding-top:24px;
+    padding-bottom:24px;
   }
   #continuation .one-line-vow{
     font-family:'Great Vibes', cursive;
@@ -1003,35 +1173,42 @@
   #continuation #act-iii{ background:var(--dusky-champagne-blue); padding-bottom:0; }
   #act-iii > .act-title, #act-iii > .act-subtitle, #act-iii > .body-text{ position:relative; z-index:1; }
 
+  #ceremony, #reception, #wedding-party, #dress-code, #gift{
+    width:100vw;
+    margin-left:calc(50% - 50vw);
+    margin-right:calc(50% - 50vw);
+    padding-left:22px;
+    padding-right:22px;
+  }
   #ceremony{
     background:linear-gradient(180deg, var(--dark-slate-blue) 0%, var(--muted-blue) 60%, var(--champagne-haze) 100%);
-    padding:34px 22px;
-    margin:0 -22px;
+    padding-top:26px; padding-bottom:26px;
   }
   #ceremony.on-light{ color:var(--ink-on-light); }
   #reception{
     background:linear-gradient(180deg, var(--champagne-haze) 0%, var(--beige) 50%, var(--warm-taupe) 100%);
-    padding:34px 22px;
-    margin:0 -22px;
+    padding-top:26px; padding-bottom:26px;
     color:var(--ink-on-light);
   }
-  #reception .section-label{ color:var(--dusty-blue); }
+  #reception .section-label{ color:var(--dark-slate-blue); }
+  /* Item 1 — strengthen the CTA underline against the mid-tone
+     background so "View on Google Maps" / "Get Directions" read
+     as clearly interactive, not just body text. */
+  #reception .cta-link{ border-bottom-color:rgba(46,59,71,0.45); }
+  #reception .cta-link:hover, #reception .cta-link:active{ color:var(--dark-slate-blue); border-color:var(--dark-slate-blue); }
   #wedding-party{
-    background:linear-gradient(180deg, var(--warm-taupe) 0%, var(--dark-slate-blue) 45%, var(--dusty-ivory) 100%);
-    padding:34px 22px;
-    margin:0 -22px;
+    background:linear-gradient(180deg, var(--warm-taupe) 0%, var(--dark-slate-blue) 45%, var(--deep-dusty-blue) 100%);
+    padding-top:26px; padding-bottom:26px;
   }
   #dress-code{
     background:linear-gradient(180deg, var(--dusty-ivory) 0%, var(--dusty-blue) 100%);
-    padding:34px 22px;
-    margin:0 -22px;
+    padding-top:26px; padding-bottom:26px;
     color:var(--ink-on-light);
   }
   #dress-code .section-label{ color:var(--dark-slate-blue); }
   #gift{
     background:linear-gradient(180deg, var(--dusty-blue) 0%, var(--deep-navy) 55%, #3A4C5C 100%);
-    padding:34px 22px 40px;
-    margin:0 -22px;
+    padding-top:26px; padding-bottom:32px;
     position:relative;
   }
   #gift::before{
@@ -1040,11 +1217,20 @@
     background:radial-gradient(ellipse 55% 35% at 50% 70%, rgba(217,194,143,0.10), transparent 70%);
     pointer-events:none;
   }
+  /* Item 7 — "monetary gift" reads as an intentional accent, not a
+     button: slightly larger, semi-bold, champagne gold, gentle
+     letter-spacing. No border, no background box. */
+  #gift .gift-highlight{
+    color:var(--champagne);
+    font-weight:600;
+    font-size:1.05em;
+    letter-spacing:0.3px;
+  }
   @media (min-width:640px){
-    #ceremony, #reception, #wedding-party, #dress-code, #gift{ margin:0 -8%; padding-left:8%; padding-right:8%; }
+    #ceremony, #reception, #wedding-party, #dress-code, #gift{ padding-left:8vw; padding-right:8vw; }
   }
   @media (min-width:900px){
-    #ceremony, #reception, #wedding-party, #dress-code, #gift{ margin:0 -9%; padding-left:9%; padding-right:9%; }
+    #ceremony, #reception, #wedding-party, #dress-code, #gift{ padding-left:9vw; padding-right:9vw; }
   }
 
   /* ---- Church / Reception: editorial spread, image kept modest
@@ -1208,12 +1394,19 @@
     background-image:radial-gradient(circle at 35% 28%, rgba(255,255,255,0.5), transparent 55%);
   }
   #continuation .swatch .swatch-label{ font-family:'Cormorant Garamond', serif; font-size:11.5px; letter-spacing:1px; text-transform:uppercase; }
-  #continuation .kindly-avoid-list{
-    list-style:none; padding:0; margin:6px auto 0; max-width:420px;
-    font-family:'Libre Baskerville', serif; font-size:12px; line-height:1.9;
-    text-align:left; display:inline-block; opacity:0.92;
+  #continuation .kindly-avoid-intro{
+    font-family:'Libre Baskerville', serif; font-size:12px; line-height:1.8;
+    opacity:0.85; margin:6px auto 10px; max-width:460px;
   }
-  #continuation .kindly-avoid-list li::before{ content:"— "; color:var(--champagne); }
+  #continuation .kindly-avoid-list{
+    display:flex; flex-wrap:wrap; justify-content:center; align-items:center;
+    gap:0 6px;
+    margin:0 auto; max-width:460px;
+    font-family:'Cormorant Garamond', serif; font-style:italic; font-size:12.5px; line-height:2.1;
+    text-align:center; opacity:0.72; letter-spacing:0.2px;
+  }
+  #continuation .kindly-avoid-list span{ white-space:nowrap; }
+  #continuation .kindly-avoid-list span:not(:last-child)::after{ content:"\00a0\00b7"; margin-left:6px; color:var(--champagne); }
 
   /* ---- Gift section (Part 20) ---- */
   #continuation .gift-toggle{
@@ -1259,30 +1452,23 @@
      hero (Part 6). The Mayon image is only as tall as the moment
      needs; object-position keeps the volcano the visual anchor.
      ============================================================ */
+  /* Item 1 — the countdown is now a pure gradient section: no Mayon
+     image, no photographic background of any kind. A sophisticated
+     three-stop blue gradient carries the same luxury-stationery feel
+     as the rest of the invitation. */
   #continuation .countdown-act{
     position:relative;
-    min-height:78vh;
-    padding:56px 22px;
+    width:100vw;
+    margin-left:calc(50% - 50vw);
+    margin-right:calc(50% - 50vw);
+    min-height:0;
+    padding:72px 22px 68px;
     display:flex; align-items:center; justify-content:center;
     overflow:hidden;
     text-align:center;
+    background:linear-gradient(180deg, #263746 0%, #31445A 45%, #3F5368 100%);
   }
-  #continuation .countdown-bg{ position:absolute; inset:0; z-index:1; overflow:hidden; }
-  #continuation .countdown-bg img{
-    width:100%; height:100%; object-fit:cover;
-    /* Forced extra scale creates the crop headroom needed to push
-       well past the cloud-heavy sky and hold on the volcano + its
-       river reflection — the actual visual anchor of the image. */
-    object-position:center 78%;
-    transform:scale(1.5);
-    transition:transform 8s ease;
-  }
-  #continuation .countdown-act.in-view .countdown-bg img{ transform:scale(1.58); }
-  #continuation .countdown-scrim{
-    position:absolute; inset:0; z-index:2;
-    background:linear-gradient(180deg, rgba(15,20,28,0.46) 0%, rgba(15,20,28,0.58) 55%, rgba(15,20,28,0.72) 100%);
-  }
-  #continuation .countdown-particles{ position:absolute; inset:0; z-index:3; pointer-events:none; }
+  #continuation .countdown-particles{ position:absolute; inset:0; z-index:2; pointer-events:none; }
   #continuation .countdown-particles span{
     position:absolute; width:3px; height:3px; border-radius:50%;
     background:#F6E8C8; opacity:0;
@@ -1295,11 +1481,18 @@
     100%{ opacity:0; transform:translateY(-200px); }
   }
   #continuation .countdown-content{ position:relative; z-index:4; max-width:520px; }
-  #continuation .countdown-content .section-title{ color:#F6E8C8; }
+  /* No crater to anchor toward anymore — the title sits centred in
+     its own editorial composition instead of being lifted upward. */
+  #continuation .countdown-content .section-title{
+    color:#F6E8C8;
+    margin-top:0;
+  }
   #continuation .countdown-quote{
-    font-family:'Cormorant Garamond', serif; font-size:15px; line-height:1.6;
+    font-family:'Cormorant Garamond', serif; font-size:clamp(9.5px, 3.6vw, 15px); line-height:1.6;
     color:#E8D29A; text-shadow:0 2px 10px rgba(0,0,0,0.55), 0 0 18px rgba(246,232,200,0.2);
     margin:12px 0 22px;
+    white-space:nowrap;
+    letter-spacing:0.2px;
   }
   #continuation .countdown-until{
     font-family:'Cormorant Garamond', serif; font-size:25px; color:#E8D29A;
@@ -1307,24 +1500,36 @@
     margin:0 0 20px;
   }
   #continuation .countdown-timer{
-    display:flex; justify-content:center; gap:16px; flex-wrap:wrap;
+    display:flex; justify-content:center; gap:clamp(14px, 4vw, 30px); flex-wrap:wrap;
     font-family:'Cormorant Garamond', serif; font-size:20px; color:#E8D29A;
-    text-shadow:0 2px 8px rgba(0,0,0,0.55); margin-bottom:6px;
+    text-shadow:0 2px 8px rgba(0,0,0,0.55); margin-bottom:8px;
   }
-  #continuation .countdown-timer .t-unit{ min-width:54px; }
-  #continuation .countdown-timer .t-num{ display:block; font-size:32px; font-weight:700; transition:opacity 0.25s ease; }
+  #continuation .countdown-timer .t-unit{ min-width:64px; }
+  /* Part 7 — the numbers are the centerpiece of this section: much
+     larger and bolder than the rest of the countdown typography,
+     while the labels beneath stay small and quiet. */
+  #continuation .countdown-timer .t-num{
+    display:block;
+    font-family:'Libre Baskerville', serif;
+    font-size:clamp(40px, 11vw, 64px);
+    font-weight:700;
+    line-height:1;
+    letter-spacing:0.5px;
+    color:#FBF3E0;
+    text-shadow:0 3px 14px rgba(0,0,0,0.5), 0 0 26px rgba(246,232,200,0.3);
+    transition:opacity 0.25s ease;
+  }
   #continuation .countdown-timer .t-label{
     display:block; font-family:'Libre Baskerville', serif; font-size:9px;
     letter-spacing:1.5px; text-transform:uppercase; color:#F6E8C8; opacity:0.7;
+    margin-top:4px;
   }
   #continuation .countdown-date{
     font-family:'Cormorant Garamond', serif; font-size:15px; color:#E8D29A;
     margin:16px 0 6px; text-shadow:0 2px 10px rgba(0,0,0,0.55), 0 0 18px rgba(246,232,200,0.2);
   }
-  #continuation .countdown-note{ font-family:'Libre Baskerville', serif; font-size:13px; color:#F5F0E6; margin:12px 0 0; }
-
   /* ---- FAQ accordion (Part 21) ---- */
-  #act-iv{ background:linear-gradient(180deg, var(--dark-slate-blue) 0%, var(--champagne-haze) 65%, var(--dusty-ivory) 100%); color:var(--ink-on-light); }
+  #act-iv{ background:linear-gradient(180deg, var(--dark-slate-blue) 0%, var(--champagne-haze) 70%, var(--warm-taupe) 100%); color:var(--ink-on-light); }
   #act-iv .act-title, #act-iv .body-text, #act-iv .section-label{ color:inherit; }
   #act-iv > .act-title{ color:var(--ink-on-dark); }
   #act-iv > .body-text:first-of-type{ color:var(--ink-on-dark); }
@@ -1359,9 +1564,16 @@
      (it can't exist before the guest actually submits), and even
      then it's a plain reveal-in-place, not a state machine.
      ============================================================ */
-  #act-v{ background:linear-gradient(180deg, var(--deep-navy) 0%, var(--dark-slate-blue) 40%, var(--champagne-haze) 75%, var(--dusty-ivory) 100%); }
-  #rsvp-scene-2, #rsvp-form-section{ color:var(--ink-on-light); }
-  #rsvp-scene-2 .section-label, #rsvp-form-section .section-label{ color:var(--dusty-blue); }
+  #act-v{ background:linear-gradient(180deg, var(--warm-taupe) 0%, var(--dark-slate-blue) 30%, var(--deep-navy) 55%, var(--dark-slate-blue) 80%, var(--champagne-haze) 100%); }
+  #rsvp-scene-2, #rsvp-form-section{ color:var(--ink-on-dark); }
+  #rsvp-form-section .section-label{ color:var(--champagne); }
+  /* "Will You Celebrate With Us" sits over the darker part of Act V's
+     gradient, where dusty-blue reads too close to the background —
+     a warm ivory keeps it luxurious but clearly legible. */
+  #rsvp-scene-2 .section-label{
+    color:var(--soft-ivory);
+    text-shadow:0 1px 10px rgba(20,28,38,0.4);
+  }
 
   #continuation .rsvp-handwritten{
     font-family:'Libre Baskerville', serif;
@@ -1382,11 +1594,11 @@
   }
   #continuation .form-field input[type="text"], #continuation .form-field textarea{
     width:100%; font-family:'Libre Baskerville', serif; font-size:12px;
-    color:var(--ink-on-light);
-    border:none; border-bottom:1px solid rgba(111,135,157,0.4); border-radius:0;
+    color:var(--ink-on-dark);
+    border:none; border-bottom:1px solid rgba(239,231,216,0.35); border-radius:0;
     padding:9px 2px; background:transparent; transition:border-color 0.25s ease;
   }
-  #continuation .form-field input[type="text"]::placeholder, #continuation .form-field textarea::placeholder{ color:rgba(46,59,71,0.4); }
+  #continuation .form-field input[type="text"]::placeholder, #continuation .form-field textarea::placeholder{ color:rgba(239,231,216,0.45); }
   #continuation .form-field input[type="text"]:focus, #continuation .form-field textarea:focus{ outline:none; border-color:var(--champagne); }
   #continuation .form-field textarea{ resize:vertical; min-height:56px; }
   #continuation .form-field.field-error input, #continuation .form-field.field-error .radio-group{ border-color:#b3564f; }
@@ -1413,7 +1625,7 @@
   #continuation .swipe-send-label{
     position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
     font-family:'Cormorant Garamond', serif; font-size:15px; letter-spacing:0.3px;
-    color:var(--ink-on-light);
+    color:var(--ink-on-dark);
     pointer-events:none; transition:opacity 0.2s ease;
     padding-left:44px;
   }
@@ -1486,7 +1698,15 @@
     text-align:center;
   }
   #rsvp-confirmation.shown{ display:flex; }
-  #continuation .rsvp-confirm-bg{ position:absolute; inset:0; z-index:1; overflow:hidden; }
+  #continuation .rsvp-confirm-bg{
+    position:absolute; inset:0; z-index:1; overflow:hidden;
+    opacity:1;
+    transition:opacity 1.6s ease;
+  }
+  /* Mayon is a Farewell-only motif — once the RSVP is actually sent,
+     this fades away to the invitation's own gradient (already painted
+     on #act-v beneath it), never leaving a blank background. */
+  #rsvp-confirmation.bg-faded .rsvp-confirm-bg{ opacity:0; }
   #continuation .rsvp-confirm-bg img{
     width:100%; height:100%; object-fit:cover;
     object-position:center 80%;
@@ -1494,17 +1714,28 @@
   }
   #continuation .rsvp-confirm-scrim{
     position:absolute; inset:0; z-index:2;
-    background:linear-gradient(180deg, rgba(20,16,24,0.25) 0%, rgba(20,16,24,0.5) 70%, rgba(20,16,24,0.62) 100%);
+    background:linear-gradient(180deg, rgba(31,48,64,0.16) 0%, rgba(31,48,64,0.32) 70%, rgba(31,48,64,0.40) 100%);
   }
+  /* Items 6/7 — the confirmation message lives inside an elegant,
+     restrained card: a softly translucent surface with a thin
+     champagne border and gentle shadow, floating naturally on the
+     continuous Mayon/gradient background behind it rather than
+     sitting as bare text directly on the photo (unreadable) or as
+     a harsh rectangular panel (item 6's "no extra column"). The
+     card itself is content-sized, not a full-width block. */
   #continuation .rsvp-confirm-content{
     position:relative; z-index:3;
-    background:rgba(20,28,38,0.4);
-    -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
-    border-top:1px solid rgba(217,194,143,0.4);
-    border-bottom:1px solid rgba(217,194,143,0.4);
-    padding:32px 26px; max-width:460px; margin:0 auto;
-    color:#F5F0E6;
+    max-width:420px; margin:0 auto;
+    padding:36px 30px;
+    color:var(--ink-on-dark);
+    background:rgba(20,28,38,0.42);
+    border:1px solid rgba(217,194,143,0.4);
+    border-radius:4px;
+    -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+    box-shadow:0 10px 34px rgba(10,15,20,0.35);
   }
+  #continuation .rsvp-confirm-content .small-label{ color:var(--champagne); }
+  #continuation .rsvp-confirm-content .name-script{ color:#F3D98F; }
   #continuation .rsvp-confetti{ position:absolute; inset:0; z-index:2; pointer-events:none; }
 
   /* ============================================================
@@ -1513,8 +1744,11 @@
      ============================================================ */
   #continuation .farewell-act{
     position:relative;
+    width:100vw;
+    margin-left:calc(50% - 50vw);
+    margin-right:calc(50% - 50vw);
     min-height:72vh;
-    padding:64px 8%;
+    padding:64px 8vw;
     display:flex; align-items:center; justify-content:center;
     overflow:hidden;
     text-align:center;
@@ -1524,28 +1758,82 @@
     width:100%; height:100%; object-fit:cover;
     object-position:center 76%;
     transform:scale(1.5);
+    /* Subtle harmonizing grade toward the dusty-blue/champagne palette
+       — kept light so the volcano stays natural, not artificially blue. */
+    filter:saturate(0.92) brightness(0.97) sepia(0.06) hue-rotate(-6deg);
   }
   #continuation .farewell-scrim{
     position:absolute; inset:0; z-index:2;
-    background:linear-gradient(180deg, rgba(24,20,28,0.24) 0%, rgba(24,20,28,0.46) 65%, rgba(24,20,28,0.58) 100%);
+    background:linear-gradient(180deg, rgba(31,48,64,0.16) 0%, rgba(31,48,64,0.30) 65%, rgba(31,48,64,0.38) 100%);
+  }
+  /* Items 8/9 — a genuinely visible mixture of floating champagne-gold
+     motes: small, medium, and occasional softly glowing particles,
+     spread across the full scene rather than hugging the bottom edge.
+     Still restrained — no confetti, no fireworks — but no longer so
+     faint they read as absent. Layering is unchanged: behind the
+     monogram/text (z-index 2 vs .farewell-content's 3), above the
+     scrim (z-index 2, painted after it in source order). */
+  #continuation .farewell-particles{ position:absolute; inset:0; z-index:2; pointer-events:none; }
+  #continuation .farewell-particles span{
+    position:absolute; border-radius:50%;
+    background:#F3D98F; opacity:0;
+    animation:farewellGoldFloat 11s linear infinite;
+  }
+  #continuation .farewell-particles span.p-sm{ width:2px; height:2px; }
+  #continuation .farewell-particles span.p-md{ width:3px; height:3px; }
+  #continuation .farewell-particles span.p-lg{ width:4px; height:4px; }
+  #continuation .farewell-particles span.p-glow{
+    width:3px; height:3px;
+    box-shadow:0 0 6px 1px rgba(243,217,143,0.55);
+  }
+  @keyframes farewellGoldFloat{
+    0%{ opacity:0; transform:translate(0,0); }
+    14%{ opacity:0.85; }
+    50%{ transform:translate(var(--drift-x, 8px), var(--drift-y, -110px)); }
+    86%{ opacity:0.5; }
+    100%{ opacity:0; transform:translate(calc(var(--drift-x, 8px) * 2), calc(var(--drift-y, -110px) * 2)); }
   }
   #continuation .farewell-content{ position:relative; z-index:3; max-width:520px; }
+  #continuation .farewell-verse{
+    font-family:'Cormorant Infant', serif;
+    font-style:italic;
+    font-weight:300;
+    font-size:clamp(19px, 5.5vw, 24px);
+    line-height:1.3;
+    text-align:center;
+    color:#F3D98F;
+    text-shadow:0 1px 10px rgba(31,48,64,0.5);
+    margin:0 0 4px;
+  }
+  #continuation .farewell-verse-ref{
+    font-family:'Cormorant Garamond', serif;
+    font-size:15px;
+    text-align:center;
+    color:#F3D98F;
+    opacity:0.82;
+    margin:0 0 34px;
+  }
   #continuation .monogram-mark{
     width:104px; margin:0 auto 20px;
     opacity:0;
     filter:drop-shadow(0 0 22px rgba(208,184,139,0.4));
     transition:opacity 2.4s ease;
+    /* Sits above the summit of Mayon rather than floating loose in the
+       sky — lifted just enough to read as anchored to the crater. */
+    transform:translateY(-10vh);
   }
   #continuation .monogram-mark svg{ width:100%; height:auto; display:block; }
   #continuation .farewell-act.in-view .monogram-mark{ opacity:1; }
+  @media (min-width:640px){ #continuation .monogram-mark{ transform:translateY(-11vh); } }
+  @media (min-width:900px){ #continuation .monogram-mark{ transform:translateY(-12vh); } }
   #continuation .farewell-text{
     font-family:'Libre Baskerville', serif; font-size:13px; line-height:1.95;
-    color:#F3D98F; text-shadow:0 1px 10px rgba(74,70,104,0.6), 0 0 16px rgba(251,233,176,0.2);
+    color:#F3D98F; text-shadow:0 1px 10px rgba(31,48,64,0.6), 0 0 16px rgba(251,233,176,0.2);
     margin-bottom:18px;
   }
   #continuation .farewell-date{
     font-family:'Cormorant Garamond', serif; font-size:15px; color:#F3D98F;
-    text-shadow:0 1px 10px rgba(74,70,104,0.6), 0 0 16px rgba(251,233,176,0.2);
+    text-shadow:0 1px 10px rgba(31,48,64,0.6), 0 0 16px rgba(251,233,176,0.2);
     margin-bottom:26px;
   }
   #continuation .return-to-story{
@@ -1553,6 +1841,7 @@
     letter-spacing:1.5px; color:#F3D98F; background:transparent;
     border:1px solid rgba(217,194,143,0.5); border-radius:2px;
     padding:11px 24px; cursor:pointer;
+    margin-top:8px;
     transition:background 0.25s ease, border-color 0.25s ease;
   }
   #continuation .return-to-story:hover{ background:rgba(217,194,143,0.12); border-color:var(--champagne); }

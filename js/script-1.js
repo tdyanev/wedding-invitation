@@ -7,17 +7,15 @@
   var HALF_W = STAGE_W / 2; // 543
 
   /* Fallback only — used when the browser doesn't support length-division
-     in calc() (see the @supports CSS rules above, which win via
-     !important whenever they apply). Mirrors the same mobile-cover /
-     tablet-contain split as the CSS. */
+     in calc() (see the @supports CSS rule above, which wins via
+     !important whenever it applies). Mirrors the same COVER behavior as
+     the CSS: max() on every screen size, so the stage always fills the
+     viewport with no letterboxed bands, on phone, tablet, or desktop. */
   function fitStage(){
     var vv = window.visualViewport;
     var vw = (vv && vv.width) ? vv.width : window.innerWidth;
     var vh = (vv && vv.height) ? vv.height : window.innerHeight;
-    var isMobile = vw <= 600;
-    var scale = isMobile
-      ? Math.max(vw / STAGE_W, vh / STAGE_H)
-      : Math.min(vw / STAGE_W, vh / STAGE_H);
+    var scale = Math.max(vw / STAGE_W, vh / STAGE_H);
     stage.style.transform = 'scale(' + scale + ')';
   }
   window.addEventListener('resize', fitStage);
