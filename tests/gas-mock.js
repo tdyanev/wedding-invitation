@@ -2,7 +2,7 @@
 const fs = require('fs'), vm = require('vm');
 function makeEnv(opts = {}) {
   const rows = [];                       // rows[0] = header
-  const logs = [];
+  const logs = []; const openedById = [];
   let lockHeld = false, inCritical = 0, maxCritical = 0;
   const cacheStore = {};
   const sheet = {
@@ -19,12 +19,13 @@ function makeEnv(opts = {}) {
       };
     }
   };
-  const ss = { getSheetByName: (n) => (opts.noSheet ? null : (n === 'RSVPs' ? sheet : null)), insertSheet: () => sheet };
+  let tabExists = !opts.noSheet;
+  const ss = { getName: () => 'Wedding RSVP', getSheetByName: (n) => (tabExists && n === 'RSVPs' ? sheet : null), insertSheet: () => { tabExists = true; return sheet; } };
   const ctx = {
     console: { info: (s) => logs.push(s), error: (s) => logs.push(s), log: (s) => logs.push(s) },
     Logger: { log() {} },
     JSON, Date, Math, String, Number, Array, RegExp,
-    SpreadsheetApp: { getActiveSpreadsheet: () => ss, flush() {} },
+    SpreadsheetApp: { getActiveSpreadsheet: () => (opts.standalone ? null : ss), openById: (i) => { if (i !== 'SHEET123') throw new Error('not found'); openedById.push(i); return ss; }, flush() {} },
     LockService: { getScriptLock: () => ({
       tryLock: () => { if (opts.lockBusy || lockHeld) return false; lockHeld = true; inCritical++; maxCritical = Math.max(maxCritical, inCritical); return true; },
       releaseLock: () => { if (lockHeld) { lockHeld = false; inCritical--; } } }) },
@@ -33,9 +34,10 @@ function makeEnv(opts = {}) {
   };
   vm.createContext(ctx);
   vm.runInContext(fs.readFileSync(__dirname + '/../google-apps-script/Code.gs', 'utf8'), ctx);
-  if (!opts.noSheet) ctx.setup();
+  if (opts.spreadsheetId != null) vm.runInContext('CONFIG.SPREADSHEET_ID = ' + JSON.stringify(opts.spreadsheetId), ctx);
+  if (!opts.noSheet && !opts.standalone) ctx.setup();
   return {
-    rows, logs, ctx, stats: () => ({ maxCritical, lockHeld }),
+    rows, logs, ctx, openedById, stats: () => ({ maxCritical, lockHeld }),
     post: (obj) => JSON.parse(ctx.doPost({ postData: { contents: typeof obj === 'string' ? obj : JSON.stringify(obj) } }).body)
   };
 }

@@ -22,7 +22,7 @@
 (function(){
   "use strict";
 
-  var APPS_SCRIPT_URL = 'PASTE_YOUR_WEB_APP_URL_HERE';
+  var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwDTMPxQbncviBltoqsxz66gamjNZqiQgNthwW3F_LtR3MrWpa2XPEk6GrcjLrJgH7sqg/exec';
   var TIMEOUT_MS = 25000;                        // Apps Script cold starts can take a few seconds
   var PENDING_KEY = 'wedding-rsvp-pending';      // sessionStorage: survives a reload of this tab
 
@@ -58,7 +58,7 @@
   function post(payload){
     var ctrl = window.AbortController ? new AbortController() : null;
     var timer = setTimeout(function(){ if(ctrl) ctrl.abort(); }, TIMEOUT_MS);
-    return fetch(APPS_SCRIPT_URL, {
+    return fetch(String(APPS_SCRIPT_URL).trim(), {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(payload),
@@ -75,8 +75,9 @@
   function submit(fields){
     if(inFlight) return inFlight;                 // never two requests at once
 
-    if(!/^https:\/\/script\.google\.com\/(a\/macros\/[^\/]+|macros)\/s\/[\w-]+\/exec$/.test(APPS_SCRIPT_URL)){
-      console.error('[RSVP] APPS_SCRIPT_URL is not configured in js/rsvp-submit.js');
+    var url = String(APPS_SCRIPT_URL).trim();
+    if(!/^https:\/\/script\.google\.com\/.+\/exec(\?.*)?$/.test(url)){
+      console.error('[RSVP] APPS_SCRIPT_URL in js/rsvp-submit.js must be the Web app URL ending in /exec. Current value:', url);
       return Promise.resolve({ state: 'error', reason: 'not-configured' });
     }
 
@@ -110,6 +111,7 @@
       console.warn('[RSVP] submission status uncertain:', err && err.name === 'AbortError' ? 'timeout' : (err && err.message));
       return { state: 'retry', reason: 'network' };
     }).then(function(result){
+      if(result.state !== 'saved') console.warn('[RSVP] not saved:', result.state, result.reason || result.field || '');
       inFlight = null;
       return result;
     });

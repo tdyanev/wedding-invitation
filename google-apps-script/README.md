@@ -20,12 +20,14 @@ Envelope ceremony plays meanwhile; the thank-you + confetti appear ONLY after ok
 1. Create a new Google Sheet, e.g. **"Wedding RSVPs — TEST"**. Start with a test sheet and make the production one only once you're happy with it.
 2. Leave sharing as **Restricted** (only you). Don't publish it to the web and don't share its link. The script writes as you, so guests never need access.
 
-## 2. Add the script
+## 2. Add the script and tell it which spreadsheet to use
 
-1. In the sheet: **Extensions → Apps Script**.
-2. Delete the sample code and paste the whole of `Code.gs`. Click **Save**.
-3. In the function dropdown pick **`setup`** and click **Run**. Authorize when asked (Google warns that the app is unverified; it's your own script, so choose *Advanced → Go to …*).
-   This creates the **RSVPs** tab with the headers `Timestamp | Submission ID | Full Name | Attending | Message`. It never touches existing rows.
+1. In the sheet: **Extensions → Apps Script**. Delete the sample code and paste the whole of `Code.gs`.
+2. At the top of `Code.gs`, set **`SPREADSHEET_ID`** to the ID from the sheet's address bar:
+   `https://docs.google.com/spreadsheets/d/`**`1AbC…xyz`**`/edit` → `SPREADSHEET_ID: '1AbC…xyz',`
+   (If the script was opened from inside the sheet, you can leave it `''`, but setting it is clearer and also works for scripts created at script.google.com.)
+3. **`SHEET_NAME` is a tab name, not the file name.** The default, `'RSVPs'`, is created automatically as a tab inside the spreadsheet on the first RSVP (or when you run `setup`). Don't put the spreadsheet's file name here.
+4. Click **Save**, choose **`setup`** in the function dropdown and click **Run**. Authorize when asked; Google warns that the app is unverified, but it's your own script, so choose *Advanced → Go to …*. The log shows `RSVP sheet ready: "RSVPs" tab in "<your file>"`.
 
 ## 3. Deploy as a Web App
 
@@ -71,7 +73,7 @@ Then check **Apps Script → Executions**. Each run logs `{"event":"rsvp","outco
 | `ok:true, status:created/duplicate` | thank-you + confetti |
 | `VALIDATION` (`field`) | marks that field, no success |
 | `BUSY`, `RATE_LIMITED`, `SERVER_ERROR`, network error, timeout (25 s), unreadable reply | "couldn't confirm…" (or "many RSVPs arriving…"), answers kept, swipe again → same ID |
-| `REJECTED` (honeypot), `NOT_CONFIGURED`, `BAD_REQUEST` | "couldn't be sent", no success |
+| `REJECTED` (honeypot), `NOT_CONFIGURED` (no spreadsheet: set `SPREADSHEET_ID`), `BAD_REQUEST` | "couldn't be sent (reason)", no success; the reason is also in the browser console |
 
 ## Limits and known limitations
 

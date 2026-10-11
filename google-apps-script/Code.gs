@@ -1,7 +1,8 @@
 /**
  * Marlyn & Tihomir — RSVP backend (Google Apps Script Web App)
  * =============================================================
- * Bound to the private RSVP spreadsheet (Extensions → Apps Script).
+ * Writes to the private spreadsheet named by CONFIG.SPREADSHEET_ID
+ * (or, if that's empty, the sheet this script was created from).
  * Deployed as a Web App: Execute as "Me", access "Anyone".
  *
  * Contract
@@ -22,7 +23,12 @@
  */
 
 var CONFIG = {
-  SHEET_NAME: 'RSVPs',
+  // Which spreadsheet receives the RSVPs. Paste the ID from its address:
+  //   https://docs.google.com/spreadsheets/d/<THIS PART>/edit
+  // Leave '' only if this script was created from inside the sheet
+  // (Extensions -> Apps Script); then that sheet is used.
+  SPREADSHEET_ID: '',
+  SHEET_NAME: 'RSVPs',      // tab name; created with headers on first RSVP if missing
   HEADERS: ['Timestamp', 'Submission ID', 'Full Name', 'Attending', 'Message'],
   MAX_NAME: 100,
   MAX_MESSAGE: 1000,
@@ -69,7 +75,7 @@ function doPost(e) {
     try {
       var sheet = getSheet_();
       if (!sheet) {
-        log_('config_error:sheet_missing', id);
+        log_('config_error:no_spreadsheet (set CONFIG.SPREADSHEET_ID)', id);
         return fail_('NOT_CONFIGURED', false, null, id);
       }
 
@@ -123,7 +129,8 @@ function doGet() {
  * never touches existing rows.
  */
 function setup() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSpreadsheet_();
+  if (!ss) throw new Error('No spreadsheet: set CONFIG.SPREADSHEET_ID in Code.gs');
   var sheet = ss.getSheetByName(CONFIG.SHEET_NAME) || ss.insertSheet(CONFIG.SHEET_NAME);
   if (sheet.getLastRow() === 0) {
     sheet.appendRow(CONFIG.HEADERS);
@@ -131,7 +138,7 @@ function setup() {
     sheet.getRange(1, 1, 1, CONFIG.HEADERS.length).setFontWeight('bold');
     sheet.getRange('A:A').setNumberFormat('yyyy-mm-dd hh:mm:ss');
   }
-  Logger.log('RSVP sheet ready: "%s" (%s rows incl. header)', CONFIG.SHEET_NAME, sheet.getLastRow());
+  Logger.log('RSVP sheet ready: "%s" tab in "%s" (%s rows incl. header)', CONFIG.SHEET_NAME, ss.getName(), sheet.getLastRow());
 }
 
 /* ---------------------------------------------------------------- */
@@ -166,9 +173,20 @@ function safeCell_(s) {
   return /^[=+\-@\t\r\n]/.test(s) ? "'" + s : s;
 }
 
+/** Returns the RSVPs tab, creating it (with headers) on first use. Called under the lock. */
+function getSpreadsheet_() {
+  var id = String(CONFIG.SPREADSHEET_ID || '').trim();
+  return id ? SpreadsheetApp.openById(id) : SpreadsheetApp.getActiveSpreadsheet();
+}
+
 function getSheet_() {
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.SHEET_NAME);
-  if (!sheet || sheet.getLastRow() === 0) return null;
+  var ss = getSpreadsheet_();
+  if (!ss) return null;                       // no SPREADSHEET_ID and not created from a sheet
+  var sheet = ss.getSheetByName(CONFIG.SHEET_NAME);
+  if (!sheet || sheet.getLastRow() === 0) {
+    setup();
+    sheet = ss.getSheetByName(CONFIG.SHEET_NAME);
+  }
   return sheet;
 }
 

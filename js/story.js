@@ -790,7 +790,7 @@
       submitting = true;
       setStatus('');
       var msgField = document.getElementById('rsvp-message');
-      var hpField = document.getElementById('rsvp-website');
+      var hpField = document.getElementById('rsvp-hp-field');
       var request = window.WeddingRsvp ? window.WeddingRsvp.submit({
         fullName: nameField.value,
         attending: attending.value === 'yes' ? 'YES' : 'NO',
@@ -814,7 +814,8 @@
           'Many RSVPs are arriving right now — please wait a moment and swipe again.' :
           'We couldn’t confirm your RSVP was received. Your answers are still here — please check your connection and swipe again.';
       } else {
-        text = 'We’re sorry — your RSVP couldn’t be sent. Please try again later or message us directly.';
+        text = 'We’re sorry — your RSVP couldn’t be sent. Please try again later or message us directly.' +
+          (result.reason ? ' (' + result.reason + ')' : '');
       }
       setStatus(text);
       if(sendSlider) sendSlider.reset();

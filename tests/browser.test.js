@@ -183,8 +183,8 @@ let pass = 0; async function t(name, fn) { await fn(); pass++; console.log('PASS
 
   await t('honeypot filled → rejected, guest-facing error, no row', async () => {
     env = makeEnv(); requests.length = 0; const p = await newPage(browser);
-    await fill(p, { name: 'Bot', attend: 'yes' }); await p.evaluate(() => { document.getElementById('rsvp-website').value = 'spam'; });
-    await swipeMouse(p); await p.waitForTimeout(3200); const s = await state(p); assert.ok(!s.confirmed); assert.match(s.status, /couldn.t be sent/); assert.strictEqual(rows().length, 0); await p.ctx.close();
+    await fill(p, { name: 'Bot', attend: 'yes' }); await p.evaluate(() => { document.getElementById('rsvp-hp-field').value = 'spam'; });
+    await swipeMouse(p); await p.waitForTimeout(3200); const s = await state(p); assert.ok(!s.confirmed); assert.match(s.status, /couldn.t be sent.*\(rejected\)/); assert.strictEqual(rows().length, 0); await p.ctx.close();
   });
 
   await browser.close(); console.log(`\n${pass} browser tests passed`); process.exit(0);

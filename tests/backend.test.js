@@ -28,8 +28,9 @@ t('10 backend validation: bad id / bad JSON / too long / wrong types', () => { c
   assert.strictEqual(e.post('x'.repeat(10001)).code, 'BAD_REQUEST');
   assert.ok(e.post({ submissionId: id(), fullName: 'x'.repeat(100), attending: 'YES', message: 'm'.repeat(1000) }).ok);
   assert.strictEqual(e.rows.length, 2); });
-t('10b sheet missing → NOT_CONFIGURED, append failure → retryable SERVER_ERROR', () => {
-  assert.strictEqual(makeEnv({ noSheet: true }).post({ submissionId: id(), fullName: 'G', attending: 'YES' }).code, 'NOT_CONFIGURED');
+t('10b RSVPs tab missing → created with headers on first RSVP; append failure → retryable SERVER_ERROR', () => {
+  const e0 = makeEnv({ noSheet: true }); assert.strictEqual(e0.rows.length, 0); const r0 = e0.post({ submissionId: id(), fullName: 'G', attending: 'YES' });
+  assert.strictEqual(r0.status, 'created'); assert.strictEqual(e0.rows[0][1], 'Submission ID'); assert.strictEqual(e0.rows.length, 2);
   const e = makeEnv({ failAppend: true }); const r = e.post({ submissionId: id(), fullName: 'G', attending: 'YES' });
   assert.deepStrictEqual([r.code, r.retryable], ['SERVER_ERROR', true]); assert.strictEqual(e.stats().lockHeld, false, 'lock released after error');
   assert.ok(!e.logs.join().includes('"G"')); });
@@ -53,4 +54,9 @@ t('logs contain no names or messages', () => { const e = makeEnv(); e.post({ sub
   e.post({ submissionId: id(), fullName: '', attending: 'YES' }); const l = e.logs.join('\n'); assert.ok(!/Secret|private note/.test(l)); assert.ok(/created/.test(l)); });
 t('control chars stripped, newlines kept in message', () => { const e = makeEnv(); e.post({ submissionId: id(), fullName: ' Ana\u0000  \n Cruz ', attending: 'YES', message: 'line1\r\nline2\u0007' });
   assert.strictEqual(e.rows[1][2], 'Ana Cruz'); assert.strictEqual(e.rows[1][4], 'line1\nline2'); });
+t('spreadsheet selection: SPREADSHEET_ID used; standalone script without ID → NOT_CONFIGURED, no throw', () => {
+  const e = makeEnv({ standalone: true, spreadsheetId: 'SHEET123' }); const r = e.post({ submissionId: id(), fullName: 'K', attending: 'YES' });
+  assert.strictEqual(r.status, 'created'); assert.ok(e.openedById.length > 0); assert.strictEqual(e.rows.length, 2);
+  const e2 = makeEnv({ standalone: true }); const r2 = e2.post({ submissionId: id(), fullName: 'K', attending: 'YES' });
+  assert.deepStrictEqual([r2.ok, r2.code], [false, 'NOT_CONFIGURED']); assert.strictEqual(e2.stats().lockHeld, false); });
 console.log(`\n${pass} backend tests passed`);
