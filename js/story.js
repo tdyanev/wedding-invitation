@@ -31,14 +31,20 @@
     window.removeEventListener('touchmove', onOpenerTouchMove);
     window.removeEventListener('keydown', onOpenerKeydown);
 
+    var scrollCueEl = document.getElementById('opener-scroll-cue');
+    if(scrollCueEl) scrollCueEl.classList.remove('shown');
+
+    // Gold particle bridge begins with the guest's own scroll.
+    if(window.__spawnMayonDust) window.__spawnMayonDust();
+
     spawnWashParticles();
     transitionEl.classList.add('on');
 
-    if(piano){
-      try{
-        var playPromise = piano.play();
-        if(playPromise && playPromise.catch) playPromise.catch(function(){});
-      }catch(e){}
+    // The song is already playing (it began with the doors) — it simply
+    // continues; from here its level follows the section on screen.
+    if(window.__music){
+      window.__music.heal();
+      window.__music.enterStory();
     }
 
     setTimeout(function(){
@@ -100,9 +106,19 @@
     if(continuationInited) return;
     continuationInited = true;
 
+    // setupMayonParticleFade() runs first and on its own, deliberately
+    // decoupled from the setup calls below: it only touches #viewport
+    // and #mayon-particles (already present at page load, independent
+    // of Acts II-VI markup), so it has nothing to gain by waiting its
+    // turn — and everything to lose, since if any later setup* call
+    // threw, the dust would silently never receive its scroll-fade
+    // wiring at all. Calling it first guarantees the ambient particles
+    // keep working even if something else in this list breaks.
+    setupMayonParticleFade();
     setupRevealAnimations();
     setupOneLineVow();
     setupMomentsAlbum();
+    setupMomentsRail();
     setupVenueZoom();
     setupFaqAccordion();
     setupGiftToggle();
@@ -112,6 +128,52 @@
     setupRsvpFlow();
     setupFarewellReveal();
     setupReturnToStory();
+  }
+
+  /* ============================================================
+     Request 1 — keep the Mayon ambient dust visible for as long as
+     the Mayon scene actually fills the screen, instead of cutting it
+     to opacity:0 the instant story-mode begins. #viewport (the fixed-
+     ratio Mayon stage) is now a normal in-flow first section once
+     story-mode is active, so a plain IntersectionObserver on it
+     reports exactly how much of Mayon the guest can still see as they
+     scroll — intersectionRatio 1 while Mayon fills the screen, easing
+     down toward 0 as the floral transition and Our Story scroll into
+     view. Many thresholds (not just one) keep that mapping smooth
+     rather than a single on/off jump. This never spawns anything new
+     — it only ever adjusts the opacity of particles spawnMayonDust()
+     already created (or does nothing, harmlessly, if reduced-motion
+     meant none were spawned). */
+  function setupMayonParticleFade(){
+    var stageWrap = document.getElementById('viewport');
+    var particles = document.getElementById('mayon-particles');
+    if(!stageWrap || !particles) return;
+    // v70 — tied to how much of the Mayon scene is actually on screen:
+    //   Mayon filling the screen        → fully visible, floating
+    //   Mayon partially leaving         → fading gently
+    //   less than ~30% of Mayon visible → completely hidden
+    // The layer lives inside the Mayon stage (never fixed), so it also
+    // scrolls away with Mayon and is clipped at its edge: nothing can
+    // float over the floral transition, Our Story or any later section.
+    var ticking = false;
+    function update(){
+      ticking = false;
+      var vh = window.innerHeight || 1;
+      var rect = stageWrap.getBoundingClientRect();
+      var visible = Math.max(0, Math.min(rect.bottom, vh) - Math.max(rect.top, 0));
+      var ratio = visible / vh;                          // 1 = Mayon fills the screen
+      var op = Math.max(0, Math.min(1, (ratio - 0.3) / 0.55));
+      particles.style.opacity = op.toFixed(3);
+      if(op <= 0.001) particles.classList.add('md-off');
+      else particles.classList.remove('md-off');
+    }
+    function onScroll(){
+      if(!ticking){ ticking = true; requestAnimationFrame(update); }
+    }
+    window.__updateMayonDust = onScroll;
+    window.addEventListener('scroll', onScroll, {passive:true});
+    window.addEventListener('resize', onScroll);
+    update();
   }
 
   /* ============================================================
@@ -203,6 +265,127 @@
      past the last inner photo naturally chains into the outer rail's
      next moment, which is the "turning pages" feel the brief wants.
      ============================================================ */
+  /* ============================================================
+     v63 — The Moments Between album viewer: ONE photograph at a time.
+     Eight pages, eight dots, one previous and one next button. The
+     current photograph is derived from the viewer's actual scroll
+     position, so dots and caption follow swipes, trackpad gestures
+     and drags as well as clicks. Mouse users can drag; releasing a
+     drag always settles on exactly one photograph.
+     ============================================================ */
+  function setupMomentsRail(){
+    var viewer = document.getElementById('moments-viewer');
+    if(!viewer) return;
+    var pages = Array.prototype.slice.call(viewer.querySelectorAll('.moments-photo-page'));
+    var dots = Array.prototype.slice.call(document.querySelectorAll('#moments-dots button'));
+    var prev = document.getElementById('moments-prev');
+    var next = document.getElementById('moments-next');
+    var caption = document.getElementById('moments-caption');
+    var count = pages.length, current = 0, captionTimer = null;
+
+    function pageW(){ return viewer.clientWidth || 1; }
+    function goTo(i, instant){
+      i = Math.max(0, Math.min(count - 1, i));
+      var left = i * pageW();
+      if(instant){ viewer.style.scrollBehavior = 'auto'; viewer.scrollLeft = left; viewer.style.scrollBehavior = ''; }
+      else { try{ viewer.scrollTo({ left: left, behavior: 'smooth' }); }catch(e){ viewer.scrollLeft = left; } }
+      setCurrent(i);
+    }
+    function setCurrent(i){
+      if(i === current && dots[i] && dots[i].classList.contains('active')) return;
+      current = i;
+      dots.forEach(function(d, k){
+        var on = k === i;
+        d.classList.toggle('active', on);
+        if(on) d.setAttribute('aria-current', 'true'); else d.removeAttribute('aria-current');
+      });
+      if(prev) prev.disabled = i <= 0;
+      if(next) next.disabled = i >= count - 1;
+      var text = pages[i] ? pages[i].getAttribute('data-caption') : '';
+      if(caption && caption.textContent !== text){
+        caption.classList.add('fading');
+        if(captionTimer) clearTimeout(captionTimer);
+        captionTimer = setTimeout(function(){ caption.textContent = text; caption.classList.remove('fading'); }, 260);
+      }
+    }
+    var ticking = false;
+    viewer.addEventListener('scroll', function(){
+      if(ticking) return;
+      ticking = true;
+      requestAnimationFrame(function(){
+        ticking = false;
+        if(!dragging) setCurrent(Math.round(viewer.scrollLeft / pageW()));
+      });
+    }, {passive:true});
+    window.addEventListener('resize', function(){ goTo(current, true); });
+
+    if(prev) prev.addEventListener('click', function(){ goTo(current - 1); });
+    if(next) next.addEventListener('click', function(){ goTo(current + 1); });
+    dots.forEach(function(d, k){ d.addEventListener('click', function(){ goTo(k); }); });
+    viewer.addEventListener('keydown', function(e){
+      if(e.key === 'ArrowRight'){ e.preventDefault(); goTo(current + 1); }
+      else if(e.key === 'ArrowLeft'){ e.preventDefault(); goTo(current - 1); }
+    });
+
+    // Trackpad sideways swipes and horizontal mouse wheels turn exactly
+    // one photograph per gesture. Vertical wheel movement is left
+    // untouched, so the invitation keeps scrolling normally.
+    var wheelAcc = 0, wheelLock = 0, wheelReset = null;
+    viewer.addEventListener('wheel', function(e){
+      var dx = e.deltaX, dy = e.deltaY;
+      if(e.shiftKey && !dx){ dx = dy; dy = 0; }
+      if(Math.abs(dx) <= Math.abs(dy)) return;
+      e.preventDefault();
+      var now = Date.now();
+      if(wheelReset) clearTimeout(wheelReset);
+      wheelReset = setTimeout(function(){ wheelAcc = 0; }, 220);
+      if(now < wheelLock) return;
+      wheelAcc += dx;
+      if(Math.abs(wheelAcc) >= 30){
+        goTo(current + (wheelAcc > 0 ? 1 : -1));
+        wheelAcc = 0;
+        wheelLock = now + 650;
+      }
+    }, {passive:false});
+
+    // Desktop mouse drag — releases onto exactly one photograph.
+    var down = false, dragging = false, startX = 0, startLeft = 0, startIdx = 0, pid = null;
+    viewer.addEventListener('pointerdown', function(e){
+      if(e.pointerType !== 'mouse' || e.button !== 0) return;
+      down = true; dragging = false; startX = e.clientX; startLeft = viewer.scrollLeft; startIdx = current; pid = e.pointerId;
+    });
+    viewer.addEventListener('pointermove', function(e){
+      if(!down || e.pointerId !== pid) return;
+      var dx = e.clientX - startX;
+      if(!dragging && Math.abs(dx) > 4){
+        dragging = true;
+        viewer.classList.add('dragging');
+        try{ viewer.setPointerCapture(pid); }catch(err){}
+      }
+      if(dragging){ viewer.scrollLeft = startLeft - dx; e.preventDefault(); }
+    });
+    function endDrag(e){
+      if(!down) return;
+      down = false;
+      if(!dragging) return;
+      dragging = false;
+      viewer.classList.remove('dragging');
+      try{ viewer.releasePointerCapture(pid); }catch(err){}
+      var dx = (e && typeof e.clientX === 'number') ? e.clientX - startX : 0;
+      var threshold = Math.min(90, pageW() * 0.12);
+      var target = startIdx;
+      if(dx <= -threshold) target = startIdx + 1;
+      else if(dx >= threshold) target = startIdx - 1;
+      goTo(target);
+    }
+    viewer.addEventListener('pointerup', endDrag);
+    viewer.addEventListener('pointercancel', endDrag);
+    viewer.addEventListener('lostpointercapture', endDrag);
+
+    setCurrent(0);
+    if(prev) prev.disabled = true;
+  }
+
   function setupMomentsAlbum(){
     var outerRail = document.getElementById('chapters-rail');
     var outerDotsWrap = document.getElementById('chapter-dots');
@@ -417,15 +600,31 @@
 
   var prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+  /* Change 3 (v40) — back up to a fuller but still restrained ~24
+     particles now that they're confined to the card itself, each
+     varied in size, colour (from the invitation's own gold palette),
+     peak opacity, drift, and timing so they read as floating dust
+     rather than a repeating pattern. A handful get a soft glow. */
   function setupCountdownParticles(){
     var wrap = document.getElementById('countdown-particles');
     if(!wrap || prefersReducedMotion) return;
-    for(var i = 0; i < 20; i++){
+    var palette = ['#D9C28F', '#E8D5A8', '#F6E8C8'];
+    var count = 28;
+    for(var i = 0; i < count; i++){
       var s = document.createElement('span');
+      var size = 2 + Math.random() * 3;
       s.style.left = (Math.random() * 100) + '%';
-      s.style.bottom = (Math.random() * 30) + '%';
-      s.style.animationDelay = (Math.random() * 7) + 's';
-      s.style.animationDuration = (5 + Math.random() * 5) + 's';
+      s.style.bottom = (Math.random() * 55) + '%';
+      s.style.width = size + 'px';
+      s.style.height = size + 'px';
+      s.style.background = palette[Math.floor(Math.random() * palette.length)];
+      s.style.setProperty('--peak', (0.35 + Math.random() * 0.35).toFixed(2));
+      s.style.setProperty('--drift', (Math.round((Math.random() - 0.5) * 24)) + 'px');
+      s.style.animationDelay = (Math.random() * 8) + 's';
+      s.style.animationDuration = (6 + Math.random() * 6) + 's';
+      if(Math.random() < 0.3){
+        s.style.boxShadow = '0 0 ' + (3 + Math.random() * 3).toFixed(1) + 'px rgba(217,194,143,0.6)';
+      }
       wrap.appendChild(s);
     }
   }
@@ -497,8 +696,15 @@
         if(fill) fill.style.width = (originX + x + thumb.offsetWidth / 2) + 'px';
       }
 
+      function releaseTextFocus(){
+        var ae = document.activeElement;
+        if(ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA') && typeof ae.blur === 'function') ae.blur();
+      }
       function onPointerDown(e){
         if(completed) return;
+        // Close the keyboard as the guest starts the swipe, so the
+        // page is back at its normal state before the send ceremony.
+        releaseTextFocus();
         bounds(); // re-measure fresh at drag start — the track may
                   // have been laid out differently when the page
                   // first initialised.
@@ -559,7 +765,12 @@
       };
     }
 
+    var statusEl = document.getElementById('rsvp-submit-status');
+    var submitting = false;
+    function setStatus(text){ if(statusEl) statusEl.textContent = text || ''; }
+
     var sendSlider = makeSwipeTrack('rsvp-send-track', 'rsvp-send-thumb', 'rsvp-send-fill', function(){
+      if(submitting) return;                      // a request is already pending
       var attending = document.querySelector('input[name="rsvp-attend"]:checked');
       var nameOk = nameField && nameField.value.trim();
       var attendOk = !!attending;
@@ -572,8 +783,42 @@
         if(!nameOk){ nameField.focus(); }
         return;
       }
-      playSendCeremony();
+      // Never enter the send ceremony with a text field still focused.
+      if(document.activeElement && typeof document.activeElement.blur === 'function'){
+        document.activeElement.blur();
+      }
+      submitting = true;
+      setStatus('');
+      var msgField = document.getElementById('rsvp-message');
+      var hpField = document.getElementById('rsvp-website');
+      var request = window.WeddingRsvp ? window.WeddingRsvp.submit({
+        fullName: nameField.value,
+        attending: attending.value === 'yes' ? 'YES' : 'NO',
+        message: msgField ? msgField.value : '',
+        website: hpField ? hpField.value : ''
+      }) : Promise.resolve({ state: 'error', reason: 'not-configured' });
+      playSendCeremony(request);
     });
+
+    /* ---- Shown only when a send was not confirmed. The guest's
+       answers stay in the form; swiping again retries safely. ---- */
+    function showSendProblem(result){
+      var text;
+      if(result.state === 'invalid'){
+        if(result.field === 'fullName'){ nameFieldWrap.classList.add('field-error'); text = 'Please check your name and try again.'; }
+        else if(result.field === 'attending'){ attendFieldWrap.classList.add('field-error'); text = 'Please let us know if you’ll be joining us.'; }
+        else if(result.field === 'message'){ text = 'Your message is a little too long — please shorten it to 1,000 characters.'; }
+        else { text = 'Something went wrong sending your RSVP. Please try again.'; }
+      } else if(result.state === 'retry'){
+        text = result.reason === 'rate_limited' || result.reason === 'busy' ?
+          'Many RSVPs are arriving right now — please wait a moment and swipe again.' :
+          'We couldn’t confirm your RSVP was received. Your answers are still here — please check your connection and swipe again.';
+      } else {
+        text = 'We’re sorry — your RSVP couldn’t be sent. Please try again later or message us directly.';
+      }
+      setStatus(text);
+      if(sendSlider) sendSlider.reset();
+    }
 
     if(nameField){
       nameField.addEventListener('input', function(){
@@ -586,17 +831,27 @@
 
     /* ---- Ceremonial send: heart flies, envelope seals, brief
        pause, then the confirmation is revealed in place. ---- */
-    function playSendCeremony(){
+    function playSendCeremony(request){
       var overlay = document.getElementById('send-ceremony');
-      if(!overlay){ finishRsvp(); return; }
-      overlay.classList.add('on');
-      requestAnimationFrame(function(){ overlay.classList.add('fly'); });
-      setTimeout(function(){ overlay.classList.add('envelope-in'); }, 900);
-      setTimeout(function(){ overlay.classList.add('envelope-sealed'); }, 1500);
-      setTimeout(function(){
-        overlay.classList.remove('on', 'fly', 'envelope-in', 'envelope-sealed');
-        finishRsvp();
-      }, 2650);
+      // The ceremony plays while the request is in flight. The
+      // confirmation is revealed only once the server has confirmed
+      // the row was stored; until then the sealed envelope and
+      // "Sending your RSVP…" caption simply stay on screen.
+      var minShow = new Promise(function(r){ setTimeout(r, 2650); });
+      var settle = Promise.all([request, minShow]).then(function(v){ return v[0]; },
+                                                       function(){ return { state: 'retry', reason: 'network' }; });
+      if(overlay){
+        overlay.classList.add('on');
+        requestAnimationFrame(function(){ overlay.classList.add('fly'); });
+        setTimeout(function(){ overlay.classList.add('envelope-in'); }, 900);
+        setTimeout(function(){ overlay.classList.add('envelope-sealed'); }, 1500);
+      }
+      settle.then(function(result){
+        if(overlay) overlay.classList.remove('on', 'fly', 'envelope-in', 'envelope-sealed');
+        submitting = false;
+        if(result && result.state === 'saved') finishRsvp();
+        else showSendProblem(result || { state: 'retry', reason: 'network' });
+      });
     }
 
     function finishRsvp(){
@@ -608,12 +863,26 @@
           'Thank you for saying \u201cyes\u201d to celebrating with us. We can\u2019t wait to welcome you on Wednesday, January 27, 2027, at 3:00 PM, as we begin this new chapter surrounded by the people we love most.' :
           'Although we\u2019ll miss celebrating with you in person, we\u2019re deeply grateful for your love, support, and warm wishes as we begin this new chapter together.';
       }
+      if(document.activeElement && typeof document.activeElement.blur === 'function'){
+        document.activeElement.blur();
+      }
       confirmation.classList.add('shown');
-      confirmation.scrollIntoView({behavior:'smooth', block:'start'});
+      if(formSection) formSection.classList.add('submitted');
+      // Viewport-safe positioning: wait for the new layout (two frames),
+      // then scroll the page to the confirmation's own document position.
+      // No scrollIntoView, so no browser focus/zoom heuristics are involved.
+      requestAnimationFrame(function(){
+        requestAnimationFrame(function(){
+          var top = confirmation.getBoundingClientRect().top + (window.pageYOffset || document.documentElement.scrollTop || 0);
+          try{ window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' }); }
+          catch(e){ window.scrollTo(0, Math.max(0, top)); }
+        });
+      });
       spawnRsvpConfetti();
-      /* Mayon belongs to the Farewell act only — once RSVP is truly
-         sent, fade it out here in favour of the existing gradient. */
-      setTimeout(function(){ confirmation.classList.add('bg-faded'); }, 900);
+      /* Change 5 — the confirmation no longer carries a background to
+         fade away (no Mayon, no gradient behind it), so this reveals
+         cleanly right after the sending ceremony with nothing further
+         to trigger. */
     }
 
     function spawnRsvpConfetti(){

@@ -1,35 +1,14 @@
-# Wedding Invitation
+# Marlyn & Tihomir — wedding invitation (GitHub Pages)
 
-A single-page, interactive HTML wedding invitation.
+Upload the contents of this folder to the root of your repo (or a `/docs` folder) and enable Pages.
 
-## Structure
-```
-.
-├── assets
-│   └── images
-│       ├── embedded-01.jpg   (Mayon landscape — opener background)
-│       ├── embedded-02.png   (medallion / "Tap to Open" mark)
-│       ├── embedded-03.png   (floral transition divider)
-│       ├── embedded-04.png   (ceremony venue icon)
-│       ├── embedded-05.png   (reception venue icon)
-│       ├── embedded-06.jpg   (RSVP QR code)
-│       ├── embedded-07.png   (RSVP confirmation background)
-│       └── embedded-08.png   (farewell section background)
-├── css
-│   └── styles.css
-├── index.html
-└── js
-    ├── script-1.js   (opener: door interaction, scaling, story-mode trigger)
-    └── script-2.js   (Act II onward: story sections, RSVP, everything after the opener)
-```
+- `index.html` — the page (CSS still inline; all images, music and scripts are now separate files)
+- `js/opener.js`, `js/story.js` — the page's scripts (music loads from `audio/`; the RSVP swipe now waits for a confirmed save before the thank-you)
+- `js/rsvp-submit.js` — sends the RSVP to Google Apps Script and reads its confirmation (**set your /exec URL here**)
+- `images/`, `audio/` — extracted assets
+- `google-apps-script/` — `Code.gs` backend + **README.md with setup, deployment, verification and limitations**
+- `tests/` — automated tests (Node + Playwright, emulated Google services); not used by the site
+- `.nojekyll` — tells GitHub Pages to serve files as-is
 
-## Viewing locally
-Just open `index.html` in a browser — no build step, no server required
-(all asset paths are relative).
-
-## Publishing with GitHub Pages
-1. Push this repo to GitHub.
-2. In the repo, go to **Settings → Pages**.
-3. Under "Build and deployment", set **Source** to `Deploy from a branch`.
-4. Choose the `main` branch and `/ (root)` folder, then save.
-5. GitHub will publish the site at `https://<username>.github.io/<repo-name>/`.
+Paths are relative and case-sensitive on GitHub Pages — keep the folder names as they are.
+Opening `index.html` straight from disk (file://) will block the music fetch; use GitHub Pages or a local server (`python3 -m http.server`).
