@@ -576,9 +576,9 @@
     }
   }
 
-  /* ---------- Live countdown to Jan 27 2027, 3:00 PM (Asia/Manila, UTC+8) ---------- */
+  /* ---------- Live countdown to Jan 27 2027, 2:30 PM (Asia/Manila, UTC+8) ---------- */
   function setupCountdown(){
-    var target = new Date('2027-01-27T15:00:00+08:00').getTime();
+    var target = new Date('2027-01-27T14:30:00+08:00').getTime();
     var elDays = document.getElementById('cd-days');
     var elHours = document.getElementById('cd-hours');
     var elMins = document.getElementById('cd-mins');
@@ -861,7 +861,7 @@
       var msg = document.getElementById('rsvp-confirm-message');
       if(msg){
         msg.textContent = attendingYes ?
-          'Thank you for saying \u201cyes\u201d to celebrating with us. We can\u2019t wait to welcome you on Wednesday, January 27, 2027, at 3:00 PM, as we begin this new chapter surrounded by the people we love most.' :
+          'Thank you for saying \u201cyes\u201d to celebrating with us. We can\u2019t wait to welcome you on Wednesday, January 27, 2027, at 2:30 PM, as we begin this new chapter surrounded by the people we love most.' :
           'Although we\u2019ll miss celebrating with you in person, we\u2019re deeply grateful for your love, support, and warm wishes as we begin this new chapter together.';
       }
       if(document.activeElement && typeof document.activeElement.blur === 'function'){
